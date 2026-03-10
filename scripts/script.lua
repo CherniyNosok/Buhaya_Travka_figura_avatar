@@ -72,6 +72,13 @@ squapi.ear:new(
  0.8  --(0.8) earBounce
 )
 
+squapi.randimation:new(
+    animations["models.model"].blink,
+    nil,    --(100) minTime
+    nil,    --(300) maxTime
+    true     --(false) stopOnSleep
+)
+
 local head = models.models.model.root.torso.Head
 models.models.tail:moveTo(models.models.model.root.torso.Body)
 models.models.plushe:moveTo(head)
