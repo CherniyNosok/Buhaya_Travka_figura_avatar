@@ -22,6 +22,9 @@ local tail = {
     --models.models.tail.Tail.Tail1.Tail2.Tail3.Tail4.Tail5.Tail6.Tail7.Tail8.Tail9.Tail10
 }
 
+models.models.crown:moveTo(models.models.model.root.torso.Head)
+local crown = models.models.model.root.torso.Head.crown
+
 local tailModel = tailPhysics.new(models.models.tail.Tail.Tail1)
 tailModel:setConfig {
     idleSpeed = vec(0.05, 0.01, 0.2),
