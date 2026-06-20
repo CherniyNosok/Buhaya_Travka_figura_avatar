@@ -135,7 +135,7 @@ end
 
 local switchCrownType = mainPage:newAction()
     :setTexture(getTextures(crownType[1])["icon"], 16, 16, 16, 16)
-    :setTitle(crownType[2])
+    :setTitle(crownType[2].."\n:ЛКМ - вкл/выкл\n:ПКМ - выбор типа")
     :setColor((crownSwitch) and vec(0, 1, 0) or vec(1, 0, 0))
 
 local function scrollingCrown(dir)
@@ -153,14 +153,21 @@ local function scrollingCrown(dir)
 
     local tmpType = CrownTextures[CrownTextures:getKeys()[crownInd]]
     switchCrownType:setTexture(getTextures(tmpType[1])["icon"], 16, 16, 16, 16)
-        :setTitle(tmpType[2])
+        :setTitle(tmpType[2].."\n:ЛКМ - вкл/выкл\n:ПКМ - выбор типа")
+end
+
+function pings.switchCrown(id)
+    crownType = CrownTextures[CrownTextures:getKeys()[id]]
+    models.models.model.root.torso.Head.crown:setPrimaryTexture("CUSTOM", getTextures(crownType[1])["texture"])
+end
+
+function pings.toggleCrown(state)
+    models.models.model.root.torso.Head.crown:setVisible(state)
 end
 
 function pings.lClickCrownSwitch()
-    log("Left")
     crownSwitch = not crownSwitch
-    models.models.model.root.torso.Head.crown:setVisible(crownSwitch)
-    crownSwitch = crownSwitch
+    pings.toggleCrown(crownSwitch)
     config:save("crownSwitch", crownSwitch)
 
     if not crownSwitch then
@@ -171,10 +178,8 @@ function pings.lClickCrownSwitch()
 end
 
 function pings.rClickCrownSwitch()
-    log("Right")
-    crownType = CrownTextures[CrownTextures:getKeys()[crownInd]]
-    models.models.model.root.torso.Head.crown:setPrimaryTexture("CUSTOM", getTextures(crownType[1])["texture"])
-    config:save("crownType", crownType)
+    pings.switchCrown(crownInd)
+    config:save("crownType", CrownTextures[CrownTextures:getKeys()[crownInd]])
 end
 
 switchCrownType:onScroll(scrollingCrown)
