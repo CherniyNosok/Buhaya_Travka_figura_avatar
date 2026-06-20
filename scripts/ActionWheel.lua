@@ -1,7 +1,23 @@
 local AW = {}
+local SyncLib = require("scripts.libs.SyncLib")
 
-local helmetSwitch = config:load("helmetSwitch")
-local armorSwitch = config:load("armorSwitch")
+local sync = SyncLib.new({interval = 100})
+
+-- local helmetSwitch = config:load("helmetSwitch")
+-- local armorSwitch = config:load("armorSwitch")
+
+sync:register("helmet", true, SyncLib.BOOLEAN, function(visible)
+    vanilla_model.HELMET:setVisible(visible)
+end)
+sync:register("armor", true, SyncLib.BOOLEAN, function(visible)
+    vanilla_model.ARMOR:setVisible(visible)
+end)
+sync:register("plushe", false, SyncLib.BOOLEAN, function(visible)
+    if models.models.model.root.torso.Head.plushe ~= nil then
+        models.models.model.root.torso.Head.plushe:setPrimaryTexture("PRIMARY")
+        models.models.model.root.torso.Head.plushe:setVisible(visible)
+    end
+end)
 
 local mainPage = action_wheel:newPage()
 
@@ -17,7 +33,6 @@ local toggleArmor = mainPage:newAction()
     :setToggleTitle("Броня включена")
     :setColor(1, 0, 0)
     :setTitle("Броня выключена")
-    :setToggled(armorSwitch)
 
 local toggleHelmet = mainPage:newAction()
     :setItem("minecraft:iron_helmet")
@@ -25,11 +40,9 @@ local toggleHelmet = mainPage:newAction()
     :setToggleTitle("Шлем включен")
     :setColor(1, 0, 0)
     :setTitle("Шлем выключен")
-    :setToggled(helmetSwitch)
 
-function pings.clickPlusheSwitch(state)
+function pings.clickPlusheSwitch()
     models.models.model.root.torso.Head.plushe:setPrimaryTexture("PRIMARY")
-    models.models.model.root.torso.Head.plushe:setVisible(state)
 end
 
 local function getPlusheTexture()
@@ -51,26 +64,25 @@ local function getPlusheTexture()
     return tex
 end
 
-togglePlushe:setOnToggle(pings.clickPlusheSwitch)
+togglePlushe:setOnToggle(function(visible)
+    pings.clickPlusheSwitch()
+    sync:set("plushe", visible)
+end)
     :setTexture(getPlusheTexture(), 8, 8, 8, 8, 2)
 
-function pings.clickArmorSwitch(state)
-    vanilla_model.ARMOR:setVisible(state)
-    armorSwitch = state
-    config:save("armorSwitch", armorSwitch)
-    if not helmetSwitch then
-        vanilla_model.HELMET:setVisible(helmetSwitch)
+local function clickArmorSwitch(state)
+    sync:set("armor", state)
+    if not sync:get("helmet") then
+        sync:toggle("helmet")
     end
 end
 
-function pings.clickHelmetSwitch(state)
-    vanilla_model.HELMET:setVisible(state)
-    helmetSwitch = state
-    config:save("helmetSwitch", helmetSwitch)
+local function clickHelmetSwitch(state)
+    sync:set("helmet", state)
 end
 
-toggleArmor:setOnToggle(pings.clickArmorSwitch)
-toggleHelmet:setOnToggle(pings.clickHelmetSwitch)
+toggleArmor:setOnToggle(clickArmorSwitch)
+toggleHelmet:setOnToggle(clickHelmetSwitch)
 
 
 -- Изменение венка
@@ -110,11 +122,6 @@ function CrownTextures:getKeys()
     return keys
 end
 
-local crownSwitch = config:load("crownSwitch") == nil and false or config:load("crownSwitch")
-local crownType = config:load("crownType") == nil and CrownTextures.ALLIUM or config:load("crownType")
-
-local crownInd = 1
-
 ---Поиск текстур венка по низванию
 ---@param name string
 ---@return {["texture"]: Texture, ["icon"]: Texture}
@@ -132,6 +139,20 @@ local function getTextures(name)
     end
     return texs
 end
+
+sync:register("crownSwitch", false, SyncLib.BOOLEAN, function(visible)
+    if models.models.model.root.torso.Head.crown ~= nil then
+        models.models.model.root.torso.Head.crown:setVisible(visible)
+    end
+end)
+sync:register("crownInd", 1, SyncLib.INT8, function(id)
+    local crownType = CrownTextures[CrownTextures:getKeys()[id]]
+    models.models.model.root.torso.Head.crown:setPrimaryTexture("CUSTOM", getTextures(crownType[1])["texture"])
+end)
+
+local crownSwitch = sync:get("crownSwitch")
+local crownInd = sync:get("crownInd")
+local crownType = CrownTextures[CrownTextures:getKeys()[crownInd]]
 
 local switchCrownType = mainPage:newAction()
     :setTexture(getTextures(crownType[1])["icon"], 16, 16, 16, 16)
@@ -156,46 +177,36 @@ local function scrollingCrown(dir)
         :setTitle(tmpType[2].."\n:ЛКМ - вкл/выкл\n:ПКМ - выбор типа")
 end
 
-function pings.switchCrown(id)
-    crownType = CrownTextures[CrownTextures:getKeys()[id]]
-    models.models.model.root.torso.Head.crown:setPrimaryTexture("CUSTOM", getTextures(crownType[1])["texture"])
-end
+switchCrownType:onScroll(scrollingCrown)
+    :onRightClick(function()
+        sync:set("crownInd", crownInd)
+    end)
+    :onLeftClick(function()
+        sync:toggle("crownSwitch")
+        if not sync:get("crownSwitch") then
+            switchCrownType:setColor(1, 0, 0)
+        else
+            switchCrownType:setColor(0, 1, 0)
+        end
+    end)
 
-function pings.toggleCrown(state)
-    models.models.model.root.torso.Head.crown:setVisible(state)
-end
 
-function pings.lClickCrownSwitch()
-    crownSwitch = not crownSwitch
-    pings.toggleCrown(crownSwitch)
-    config:save("crownSwitch", crownSwitch)
+function events.entity_init()
+    sync:init()
 
-    if not crownSwitch then
+    toggleArmor:setToggled(sync:get("armor"))
+    toggleHelmet:setToggled(sync:get("helmet"))
+    togglePlushe:setToggled(sync:get("plushe"))
+
+    if not sync:get("crownSwitch") then
         switchCrownType:setColor(1, 0, 0)
     else
         switchCrownType:setColor(0, 1, 0)
     end
 end
 
-function pings.rClickCrownSwitch()
-    pings.switchCrown(crownInd)
-    config:save("crownType", CrownTextures[CrownTextures:getKeys()[crownInd]])
-end
-
-switchCrownType:onScroll(scrollingCrown)
-    :onRightClick(pings.rClickCrownSwitch)
-    :onLeftClick(pings.lClickCrownSwitch)
-
-function events.entity_init()
-    models.models.model.root.torso.Head.crown:setVisible(crownSwitch)
-    models.models.model.root.torso.Head.crown:setPrimaryTexture("CUSTOM", getTextures(crownType[1])["texture"])
-    switchCrownType:setTexture(getTextures(crownType[1])["icon"], 16, 16, 16, 16)
-    for i, v in ipairs(CrownTextures:getKeys()) do
-        if crownType[1] == string.lower(CrownTextures:getKeys()[i]) then
-            crownInd = i
-            break
-        end
-    end
+function events.tick()
+    sync:tick()
 end
 
 return AW
